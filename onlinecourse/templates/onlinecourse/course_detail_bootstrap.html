@@ -50,6 +50,45 @@
                     </div>
                 {% endfor %}
             </div>
+
+            {% if user.is_authenticated %}
+                <a href="#question_wrapper_collapse" data-toggle="collapse">View Questions</a>
+
+                <div id="question_wrapper_collapse" class="collapse">
+                    {% if questions %}
+                    <form id="questionform" action="{% url 'onlinecourse:submit' course_id=course.id %}" method="post">
+                        {% csrf_token %}
+                        {% for question in questions %}
+                            <div class="card mt-1">
+                                <div class="card-header"><h5>{{ question.question_text}}</h5></div>
+
+                                <div id="choice-wrapper-{{ question.question_id }}" class="form-group">
+                                    {% for choice in question.choices %}
+                                        <div class="form-check">
+                                            <label class="form-check-label">
+                                                <input type="checkbox"  id="choice-{{ question.question_id }}--{{ choice.id }}" name="choice_{{choice.id}}"
+                                                    class="form-check-input choices"
+                                                    onchange="on_choice_pressed( this, {{ question.question_id }}, {{ choice.id }} )"
+                                                    value="{{choice.id}}">{{ choice.choice_text }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+
+                        <div>
+                            <input class="btn btn-success btn-block" type="submit" value="Submit">
+                        </div>
+                    </form>
+                    {% else %}
+                        <div>
+                            No questions available.
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+
             <!-- Task: show questions and choices -->
             <!-- <HINT> Use Bootstrap Collapse to hide exam first, more details could be found here
             https://www.w3schools.com/bootstrap4/bootstrap_collapse.asp-->
@@ -98,5 +137,13 @@
             <!--Check here to see more details Bootstrap checkbox
              https://www.w3schools.com/bootstrap4/bootstrap_forms_inputs.asp-->
     </div>
+
+    <script>
+        function on_choice_pressed( choice, question_id, choice_id ){
+            let choice_wrapper = document.getElementById(`choice-wrapper-${question_id}`)
+            choices = choice_wrapper.querySelectorAll(".choices")
+            $(choices).not(`#choice-${question_id}--${choice_id}`).prop('checked',false);
+        }
+    </script>
 </body>
 </html>

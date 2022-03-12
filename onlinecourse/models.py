@@ -1,5 +1,6 @@
 import sys
 from django.utils.timezone import now
+from django.db.models import Sum
 try:
     from django.db import models
 except Exception:
@@ -67,6 +68,10 @@ class Course(models.Model):
         return "Name: " + self.name + "," + \
                "Description: " + self.description
 
+    
+    def get_total_marks(self):
+        return Question.objects.filter(course=self).aggregate(marks=Sum('question_grades'))["marks"]
+
 
 # Lesson model
 class Lesson(models.Model):
@@ -74,6 +79,9 @@ class Lesson(models.Model):
     order = models.IntegerField(default=0)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     content = models.TextField()
+
+    def __str__(self):
+        return f"{self.id} -- {self.title}"
 
 
 # Enrollment model
@@ -94,6 +102,10 @@ class Enrollment(models.Model):
     mode = models.CharField(max_length=5, choices=COURSE_MODES, default=AUDIT)
     rating = models.FloatField(default=5.0)
 
+    def submission( self ):
+        submission = Submission.objects.filter( enrollment=self ).first()
+        return submission
+
 
 # <HINT> Create a Question Model with:
     # Used to persist question content for a course
@@ -101,19 +113,28 @@ class Enrollment(models.Model):
     # Has a grade point for each question
     # Has question content
     # Other fields and methods you would like to design
-#class Question(models.Model):
+class Question(models.Model):
     # Foreign key to lesson
     # question text
     # question grade/mark
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    question_text = models.CharField(max_length=255)
+    question_grades = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.id} -- {self.question_text}"
 
     # <HINT> A sample model method to calculate if learner get the score of the question
-    #def is_get_score(self, selected_ids):
-    #    all_answers = self.choice_set.filter(is_correct=True).count()
-    #    selected_correct = self.choice_set.filter(is_correct=True, id__in=selected_ids).count()
-    #    if all_answers == selected_correct:
-    #        return True
-    #    else:
-    #        return False
+    def is_get_score(self, selected_ids):
+       all_answers = self.choice_set.filter(is_correct=True).count()
+       selected_correct = self.choice_set.filter(is_correct=True, id__in=selected_ids).count()
+       if all_answers == selected_correct:
+           return True
+       else:
+           return False
+
+
 
 
 #  <HINT> Create a Choice Model with:
@@ -122,13 +143,56 @@ class Enrollment(models.Model):
     # Choice content
     # Indicate if this choice of the question is a correct one or not
     # Other fields and methods you would like to design
-# class Choice(models.Model):
+class Choice(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    choice_content = models.CharField(max_length=255)
+    is_correct = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.id} -- {self.question.question_text} -- {self.choice_content}"
 
 # <HINT> The submission model
 # One enrollment could have multiple submission
 # One submission could have multiple choices
 # One choice could belong to multiple submissions
-#class Submission(models.Model):
-#    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
-#    choices = models.ManyToManyField(Choice)
-#    Other fields and methods you would like to design
+class Submission(models.Model):
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
+    choices = models.ManyToManyField(Choice)
+    #  Other fields and methods you would like to design
+
+    def get_grade(self):
+        grade = 0
+        submitted_choices = self.choices.all()
+
+        if submitted_choices.count():
+            for submitted_choice in submitted_choices:
+                if self.is_correct( submitted_choice ):
+                    grade = grade+self.get_question_grade(submitted_choice)
+
+        return grade
+
+    def get_percentage(self):
+        grade = self.get_grade()
+        # get all the questions 
+        total_marks = self.get_total_available_marks_for_course()
+        # calculate total marks
+        percentage = (grade/total_marks)*100 if grade > 0 else 0
+        # breakpoint()
+        # percentage_formatted = "%.0f" % percentage
+        return int(percentage)
+
+    def get_total_available_marks_for_course(self):
+        choice = self.choices.all()
+        # get course
+        course = choice[0].question.course
+
+        # calculate total marks
+        return course.get_total_marks()
+
+    def is_correct(self, submitted_choice ):
+        choice = Choice.objects.get(pk=submitted_choice.id)
+        return choice.is_correct
+
+    def get_question_grade(self, submitted_choice ):
+        choice = Choice.objects.get(pk=submitted_choice.id)
+        return int(choice.question.question_grades)
