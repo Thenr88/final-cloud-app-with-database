@@ -27,17 +27,11 @@ class ChoiceInline(admin.StackedInline):
     extra = 2
 class QuestionAdmin(admin.ModelAdmin):
     inlines = [ChoiceInline]
-    list_display = ('course_name', 'lesson_title', 'question_text', 'question_grades')
-    # list_filter = ['course__name', 'lesson__title']
-    # search_fields = ['course_name', 'lesson_title', 'question_text']
+    list_display = ('course_name', 'question_text', 'question_grades')
 
     @display(ordering='course__name', description='Course Name')
     def course_name(self, obj):
         return obj.course.name
-
-    @display( description='Lesson Title')
-    def lesson_title(self, obj):
-        return obj.lesson.title
 
 # <HINT> Register Question and Choice models here
 

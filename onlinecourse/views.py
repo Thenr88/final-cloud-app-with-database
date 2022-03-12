@@ -159,7 +159,6 @@ def get_questions_formatted( course_id ):
                 "question_id" : question.pk,
                 "question_text" : question.question_text,
                 "question_grades" : question.question_grades,
-                "lesson_title" : question.lesson.title,
                 "choices" : [],
             }
 

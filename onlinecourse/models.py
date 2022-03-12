@@ -118,7 +118,7 @@ class Question(models.Model):
     # question text
     # question grade/mark
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    # lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
     question_text = models.CharField(max_length=255)
     question_grades = models.IntegerField()
 
@@ -176,18 +176,19 @@ class Submission(models.Model):
         # get all the questions 
         total_marks = self.get_total_available_marks_for_course()
         # calculate total marks
-        percentage = (grade/total_marks)*100 if grade > 0 else 0
-        # breakpoint()
-        # percentage_formatted = "%.0f" % percentage
+        percentage = 0
+        if total_marks > 0:
+            percentage = (grade/total_marks)*100 if grade > 0 else 0
+            
         return int(percentage)
 
     def get_total_available_marks_for_course(self):
-        choice = self.choices.all()
+        choices = self.choices.all()
         # get course
-        course = choice[0].question.course
+        course = choices[0].question.course if choices.count() > 0 else None
 
         # calculate total marks
-        return course.get_total_marks()
+        return course.get_total_marks() if course else 0
 
     def is_correct(self, submitted_choice ):
         choice = Choice.objects.get(pk=submitted_choice.id)
